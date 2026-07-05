@@ -155,8 +155,41 @@ namespace VirtualMuseum.Backend
             if (File.Exists(_dataFilePath)) return;
 
             string seedPath = Path.Combine(Application.streamingAssetsPath, "DummyData", "museum_data_seed.json");
-            if (File.Exists(seedPath))
-                File.Copy(seedPath, _dataFilePath);
+            if (!File.Exists(seedPath)) return;
+
+            File.Copy(seedPath, _dataFilePath);
+            TryAttachBundledSampleStl();
+        }
+
+        /// <summary>
+        /// StreamingAssets/DummyData/SampleStl/*.stl 샘플이 번들되어 있으면 StlFiles로 복사하고,
+        /// stlFileURL이 비어 있는 시드 유물들에 연결한다. (데모에서 실제 STL 발굴 체험용 —
+        /// 여러 유물이 같은 파일을 참조해도 ArtifactModelLoader의 메시 캐시 덕분에 1회만 파싱된다.)
+        /// </summary>
+        private void TryAttachBundledSampleStl()
+        {
+            string sampleDir = Path.Combine(Application.streamingAssetsPath, "DummyData", "SampleStl");
+            if (!Directory.Exists(sampleDir)) return;
+
+            string sample = Directory.GetFiles(sampleDir, "*.stl").FirstOrDefault();
+            if (sample == null) return;
+
+            string destPath = Path.Combine(_stlFolderPath, "sample_" + Path.GetFileName(sample));
+            if (!File.Exists(destPath))
+                File.Copy(sample, destPath);
+
+            string json = File.ReadAllText(_dataFilePath);
+            var wrapper = JsonUtility.FromJson<ArtifactDataListWrapper>(json);
+            if (wrapper?.artifacts == null) return;
+
+            foreach (var artifact in wrapper.artifacts)
+            {
+                if (string.IsNullOrEmpty(artifact.stlFileURL))
+                    artifact.stlFileURL = destPath;
+            }
+
+            File.WriteAllText(_dataFilePath, JsonUtility.ToJson(wrapper, true));
+            Debug.Log($"[LocalJsonBackendService] 번들 샘플 STL 연결 완료: {destPath}");
         }
 
         private static string HashPassword(string password)

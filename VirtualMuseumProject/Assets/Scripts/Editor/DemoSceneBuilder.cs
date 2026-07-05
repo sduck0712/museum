@@ -82,9 +82,11 @@ namespace VirtualMuseum.EditorTools
         {
             string dataPath = Path.Combine(Application.persistentDataPath, "museum_data.json");
             string adminPath = Path.Combine(Application.persistentDataPath, "admin_accounts.json");
+            string stlDir = Path.Combine(Application.persistentDataPath, "StlFiles");
             if (File.Exists(dataPath)) File.Delete(dataPath);
             if (File.Exists(adminPath)) File.Delete(adminPath);
-            Debug.Log("[DemoSceneBuilder] 로컬 데이터 초기화 완료. 다음 실행 시 seed 데이터가 다시 복사됩니다.");
+            if (Directory.Exists(stlDir)) Directory.Delete(stlDir, recursive: true);
+            Debug.Log("[DemoSceneBuilder] 로컬 데이터 초기화 완료. 다음 실행 시 seed 데이터/샘플 STL이 다시 복사됩니다.");
         }
 
         // ---------------------------------------------------------------- 공통 유틸

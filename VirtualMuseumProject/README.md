@@ -21,6 +21,23 @@ Sonnet 1차 구현 코드를 전면 검수해 **치명적 버그를 수정**하�
 
 로컬 데이터 초기화: `Tools > Virtual Museum > Reset Local Museum Data`
 
+## 샘플 STL (루브르 박물관 모델)
+
+`Assets/StreamingAssets/DummyData/SampleStl/louvreparis.stl` (바이너리 STL, 삼각형 50만 개, 25MB)이 번들되어 있습니다.
+**최초 실행 시 자동으로** persistentDataPath의 `StlFiles/`로 복사되고, `stlFileURL`이 비어 있는 시드 유물 5종 전체에 연결되어
+좌대 위에서 실제 STL 모델을 대상으로 발굴 미니게임을 바로 체험할 수 있습니다.
+(관리자 콘솔에서 유물별로 다른 STL을 등록하면 해당 유물만 교체됩니다)
+
+**대용량 STL 처리 파이프라인** (`SimpleStlLoader` / `ArtifactModelLoader`):
+
+| 단계 | 처리 | 효과 (louvreparis.stl 기준) |
+|---|---|---|
+| 정점 웰딩 | 동일 좌표 병합 (백그라운드) | 정점 150만 → 25만 (6배 절감, 메시 54MB → 14MB) |
+| 노멀 계산 | 면적 가중 스무스 노멀 (백그라운드) | `RecalculateNormals`의 메인 스레드 멈춤 제거 + 부드러운 셰이딩 |
+| UV 생성 | 구면 투영 (백그라운드) | STL에 없는 UV를 생성해 발굴 마스크 페인팅 가능 |
+| 콜라이더 | `Physics.BakeMesh` 백그라운드 선쿠킹 | 50만 삼각형 MeshCollider 생성 시 히칭 방지 |
+| 메시 캐시 | 경로+수정시각 키 | 유물 5개가 같은 파일 참조 시 파싱/메모리 1회분만 사용 |
+
 ## 조작법
 
 | 키 | 동작 |
