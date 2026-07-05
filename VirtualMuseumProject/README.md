@@ -46,6 +46,7 @@ Sonnet 1차 구현 코드를 전면 검수해 **치명적 버그를 수정**하�
 | Q | 유물 정보 패널 (Q/ESC로 닫기) |
 | E | 발굴 미니게임 진입 |
 | F | 핸드트래킹 토글 (기본: 마우스 시뮬레이션 Mock — 마우스 위치=검지, 좌클릭=핀치) |
+| V | 내 유물함 (수집 목록 + 복원됨/온전한 발굴 배지) |
 | 1~4 | 발굴 도구 선택 (에어블로워/브러시/조각칼/피크) |
 | 마우스 휠 | 발굴 중 줌 (줌에 따라 브러시 반경 자동 보정) |
 | ESC | 발굴 종료 |
@@ -109,12 +110,25 @@ Assets/
 - STL 등록: 로컬 `.stl` 파일 경로 입력 → [프리뷰 로드]로 확인 → [이 유물에 STL 등록 + 저장]
   → 파일이 persistentDataPath로 "업로드"되고 학생 씬에서 해당 모델이 발굴 대상으로 스폰됨
 
+## 발굴 현장 연출 (스펙 6절)
+
+- 좌대 위 **지층 박스**: 측면은 표토→점토→암반 3층 그라데이션, 상판은 흙 노이즈 + 고고학 실측용 격자 눈금 (절차적 생성 텍스처)
+- 유물은 지층 상판에 살짝 **반매립**된 상태로 스폰, 발굴 붓/트레이/소형 삽 소품 배치
+- 파손 시 갈색 **파편 파티클** 버스트, 복원 후 표면 균열 틴트 영구 표시
+- 시각 전용 파츠는 콜라이더가 없어 발굴 브러시 레이캐스트를 방해하지 않음
+
+## MediaPipe 실연동
+
+`Docs/MediaPipe_Integration.md`에 단계별 가이드가 있습니다. 요약:
+플러그인 설치 → `hand_landmarker.task` 모델을 `StreamingAssets/mediapipe/`에 배치 →
+Scripting Define Symbols에 `MEDIAPIPE` 추가 → `HandTrackingManager.useMockProvider` 해제.
+`MediaPipeTasksHandProvider`(LIVE_STREAM 콜백 + 좌우반전 보정)가 자동으로 선택되며,
+실패 시(웹캠/모델 없음) 마우스 모드로 안전하게 폴백합니다.
+
 ## 다음 단계 (실서비스 고도화 포인트)
 
-- **MediaPipe 실 연동**: `MediaPipeHandLandmarkProvider`의 TODO 지점에 플러그인 콜백 연결
-  (좌우반전 보정: `viewportX = 1 - mediaPipeX`), `HandTrackingManager.useMockProvider = false`
 - **TriLib 2**: 설치 후 Player Settings → Scripting Define Symbols에 `TRILIB` 추가 시 OBJ/FBX 등 확장 포맷 지원
 - **파손 메시**: 현재 절차적 큐브 조각 → 아티스트 제작 fracture mesh + 조각별 정답 위치 데이터로 교체 권장
 - **탐험 모드 핸드트래킹 그랩**(스펙 7.3 유물 집기/회전)은 미구현 — `StudentInteractionManager`에 Kinematic Rigidbody + Slerp 추가 지점 주석 참고
 - **클라우드 전환**: `IBackendService` 구현체(`FirebaseBackendService` 등) 작성 후 `ServiceLocator.Register()` 한 줄 교체
-- **지층(Soil Layer) 박스/발굴 소품** 등 아트 연출(스펙 6절)은 데모에서는 유물 표면 흙 마스킹으로 대체
+- **Vault UI**: 현재 IMGUI 데모 화면(`VaultUIManager`) → uGUI 그리드/썸네일 화면으로 교체 지점

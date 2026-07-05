@@ -47,19 +47,24 @@ namespace VirtualMuseum.EditorTools
             var excavationMat = CreateExcavationMaterial();
             var pedestalMat = CreateSimpleMaterial("PedestalMat", new Color(0.55f, 0.55f, 0.6f));
             var floorMat = CreateSimpleMaterial("FloorMat", new Color(0.35f, 0.33f, 0.3f));
+            var wallMat = CreateSimpleMaterial("WallMat", new Color(0.62f, 0.58f, 0.52f));
             var shardMat = CreateSimpleMaterial("ShardMat", new Color(0.72f, 0.5f, 0.38f));
             var previewMat = CreateSimpleMaterial("PreviewMat", new Color(0.85f, 0.83f, 0.78f));
             var tokenMat = CreateSimpleMaterial("TokenMat", new Color(0.32f, 0.5f, 0.75f));
             var slotMat = CreateSimpleMaterial("SlotMat", new Color(0.45f, 0.42f, 0.5f));
+            var woodMat = CreateSimpleMaterial("WoodMat", new Color(0.4f, 0.28f, 0.18f));
+            var metalMat = CreateSimpleMaterial("MetalMat", new Color(0.6f, 0.6f, 0.65f));
+            var soilTopMat = CreateTexturedMaterial("SoilTopMat", CreateSoilGridTexture());
+            var soilSideMat = CreateTexturedMaterial("SoilSideMat", CreateSoilLayerTexture());
 
             // 2) 프리팹
-            var pedestalPrefab = CreatePedestalPrefab(pedestalMat);
+            var pedestalPrefab = CreatePedestalPrefab(pedestalMat, soilTopMat, soilSideMat, woodMat, metalMat);
             var shardPrefab = CreateShardPrefab(shardMat, shardLayer);
 
             // 3) 씬
             BuildLoginScene();
             BuildAdminScene(previewMat, tokenMat, slotMat);
-            BuildStudentScene(pedestalPrefab, shardPrefab, excavationMat, floorMat, brushTex, shardLayer);
+            BuildStudentScene(pedestalPrefab, shardPrefab, excavationMat, floorMat, wallMat, brushTex, shardLayer);
 
             // 4) 빌드 세팅 등록
             EditorBuildSettings.scenes = new[]
@@ -172,6 +177,15 @@ namespace VirtualMuseum.EditorTools
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
+        private static void SetFloat(Object target, string fieldName, float value)
+        {
+            var so = new SerializedObject(target);
+            var prop = so.FindProperty(fieldName);
+            if (prop == null) { Debug.LogError($"[DemoSceneBuilder] 필드 없음: {fieldName}"); return; }
+            prop.floatValue = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         private static T ReplaceAsset<T>(T asset, string path) where T : Object
         {
             AssetDatabase.DeleteAsset(path);
@@ -253,9 +267,68 @@ namespace VirtualMuseum.EditorTools
             return ReplaceAsset(mat, $"{MaterialsDir}/{name}.mat");
         }
 
+        private static Material CreateTexturedMaterial(string name, Texture2D albedo)
+        {
+            var mat = new Material(Shader.Find("Standard")) { mainTexture = albedo };
+            return ReplaceAsset(mat, $"{MaterialsDir}/{name}.mat");
+        }
+
+        /// <summary>발굴 지층 상판: 흙 노이즈 + 고고학 실측용 격자 눈금 (스펙 6절)</summary>
+        private static Texture2D CreateSoilGridTexture()
+        {
+            const int size = 256;
+            const int gridStep = 64;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Repeat };
+            float ox = Random.Range(0f, 100f), oy = Random.Range(0f, 100f);
+            var dark = new Color(0.35f, 0.25f, 0.15f);
+            var light = new Color(0.52f, 0.4f, 0.27f);
+            var gridColor = new Color(0.85f, 0.82f, 0.7f);
+
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    float n = Mathf.PerlinNoise(ox + x * 0.07f, oy + y * 0.07f);
+                    Color c = Color.Lerp(dark, light, n);
+                    bool onGrid = x % gridStep == 0 || y % gridStep == 0 ||
+                                  (x + 1) % gridStep == 0 || (y + 1) % gridStep == 0;
+                    if (onGrid) c = Color.Lerp(c, gridColor, 0.8f);
+                    tex.SetPixel(x, y, c);
+                }
+            tex.Apply();
+            return ReplaceAsset(tex, TexturesDir + "/SoilGrid.asset");
+        }
+
+        /// <summary>지층 측면: 표토 → 점토 → 암반 3층 그라데이션 (스펙 6절)</summary>
+        private static Texture2D CreateSoilLayerTexture()
+        {
+            const int size = 256;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Repeat };
+            float ox = Random.Range(0f, 100f);
+            var topsoil = new Color(0.45f, 0.33f, 0.2f);  // 표토
+            var clay = new Color(0.62f, 0.45f, 0.3f);     // 점토
+            var bedrock = new Color(0.42f, 0.4f, 0.38f);  // 암반
+
+            for (int y = 0; y < size; y++)
+            {
+                float t = y / (float)size; // 0=아래(암반) → 1=위(표토)
+                for (int x = 0; x < size; x++)
+                {
+                    float wobble = (Mathf.PerlinNoise(ox + x * 0.05f, t * 4f) - 0.5f) * 0.15f;
+                    float tt = Mathf.Clamp01(t + wobble);
+                    Color c = tt < 0.35f ? Color.Lerp(bedrock, clay, tt / 0.35f)
+                                         : Color.Lerp(clay, topsoil, (tt - 0.35f) / 0.65f);
+                    float grain = (Mathf.PerlinNoise(ox + x * 0.2f, y * 0.2f) - 0.5f) * 0.08f;
+                    tex.SetPixel(x, y, new Color(c.r + grain, c.g + grain, c.b + grain));
+                }
+            }
+            tex.Apply();
+            return ReplaceAsset(tex, TexturesDir + "/SoilLayers.asset");
+        }
+
         // ---------------------------------------------------------------- 프리팹
 
-        private static GameObject CreatePedestalPrefab(Material pedestalMat)
+        private static GameObject CreatePedestalPrefab(Material pedestalMat, Material soilTopMat,
+            Material soilSideMat, Material woodMat, Material metalMat)
         {
             var root = new GameObject("Pedestal");
             var trigger = root.AddComponent<SphereCollider>();
@@ -268,8 +341,38 @@ namespace VirtualMuseum.EditorTools
             baseObj.name = "Base";
             baseObj.transform.SetParent(root.transform, false);
             baseObj.transform.localPosition = new Vector3(0f, 0.5f, 0f);
-            baseObj.transform.localScale = new Vector3(0.7f, 0.5f, 0.7f);
+            baseObj.transform.localScale = new Vector3(1.2f, 0.5f, 1.2f);
             baseObj.GetComponent<Renderer>().sharedMaterial = pedestalMat;
+
+            // --- 발굴 현장 연출 (스펙 6절): 지층 박스 + 격자 상판 + 나무 테두리 + 소품 ---
+            // 시각 전용 파츠는 콜라이더를 제거해 발굴 브러시 레이캐스트/플레이어 이동을 방해하지 않는다.
+
+            AddVisualCube(root.transform, "SoilLayers", soilSideMat,
+                new Vector3(0f, 1.06f, 0f), new Vector3(1.1f, 0.12f, 1.1f));
+            AddVisualCube(root.transform, "SoilTop", soilTopMat,
+                new Vector3(0f, 1.125f, 0f), new Vector3(1.12f, 0.015f, 1.12f));
+
+            // 나무 테두리 4변
+            const float rimY = 1.13f, rimH = 0.1f, rimT = 0.05f, rimL = 1.22f;
+            AddVisualCube(root.transform, "RimN", woodMat, new Vector3(0f, rimY, 0.585f), new Vector3(rimL, rimH, rimT));
+            AddVisualCube(root.transform, "RimS", woodMat, new Vector3(0f, rimY, -0.585f), new Vector3(rimL, rimH, rimT));
+            AddVisualCube(root.transform, "RimE", woodMat, new Vector3(0.585f, rimY, 0f), new Vector3(rimT, rimH, rimL));
+            AddVisualCube(root.transform, "RimW", woodMat, new Vector3(-0.585f, rimY, 0f), new Vector3(rimT, rimH, rimL));
+
+            // 소품: 발굴 붓 (손잡이 + 브러시 머리)
+            var brushHandle = AddVisualPrimitive(root.transform, PrimitiveType.Cylinder, "PropBrushHandle", woodMat,
+                new Vector3(0.42f, 1.15f, 0.42f), new Vector3(0.02f, 0.09f, 0.02f));
+            brushHandle.transform.localRotation = Quaternion.Euler(90f, 35f, 0f);
+            AddVisualCube(root.transform, "PropBrushHead", metalMat,
+                new Vector3(0.35f, 1.15f, 0.32f), new Vector3(0.05f, 0.02f, 0.06f));
+
+            // 소품: 트레이 (좌대 옆 바닥)
+            AddVisualCube(root.transform, "PropTray", metalMat,
+                new Vector3(0.95f, 0.015f, 0.2f), new Vector3(0.3f, 0.03f, 0.22f));
+            // 소품: 소형 삽 (트레이 위)
+            var shovelHandle = AddVisualPrimitive(root.transform, PrimitiveType.Cylinder, "PropShovelHandle", woodMat,
+                new Vector3(0.95f, 0.045f, 0.2f), new Vector3(0.018f, 0.1f, 0.018f));
+            shovelHandle.transform.localRotation = Quaternion.Euler(90f, -20f, 0f);
 
             var hint = new GameObject("Hint");
             hint.transform.SetParent(root.transform, false);
@@ -295,6 +398,28 @@ namespace VirtualMuseum.EditorTools
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
             Object.DestroyImmediate(root);
             return prefab;
+        }
+
+        private static GameObject AddVisualCube(Transform parent, string name, Material mat,
+            Vector3 localPos, Vector3 localScale)
+        {
+            return AddVisualPrimitive(parent, PrimitiveType.Cube, name, mat, localPos, localScale);
+        }
+
+        private static GameObject AddVisualPrimitive(Transform parent, PrimitiveType type, string name,
+            Material mat, Vector3 localPos, Vector3 localScale)
+        {
+            var go = GameObject.CreatePrimitive(type);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localScale = localScale;
+            go.GetComponent<Renderer>().sharedMaterial = mat;
+
+            // 시각 전용: 콜라이더 제거 (브러시 레이캐스트/이동 간섭 방지)
+            var col = go.GetComponent<Collider>();
+            if (col != null) Object.DestroyImmediate(col);
+            return go;
         }
 
         private static GameObject CreateShardPrefab(Material shardMat, int shardLayer)
@@ -602,7 +727,7 @@ namespace VirtualMuseum.EditorTools
         // ---------------------------------------------------------------- Student 씬
 
         private static void BuildStudentScene(GameObject pedestalPrefab, GameObject shardPrefab,
-            Material excavationMat, Material floorMat, Texture2D brushTex, int shardLayer)
+            Material excavationMat, Material floorMat, Material wallMat, Texture2D brushTex, int shardLayer)
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -613,6 +738,12 @@ namespace VirtualMuseum.EditorTools
             floor.transform.position = new Vector3(0f, 0f, 4f);
             floor.transform.localScale = new Vector3(4f, 1f, 4f);
             floor.GetComponent<Renderer>().sharedMaterial = floorMat;
+
+            // 전시실 벽 4면 (콜라이더 유지 - 플레이어 이탈 방지)
+            CreateWall(wallMat, "WallN", new Vector3(0f, 2.5f, 14.5f), new Vector3(30f, 5f, 1f));
+            CreateWall(wallMat, "WallS", new Vector3(0f, 2.5f, -6.5f), new Vector3(30f, 5f, 1f));
+            CreateWall(wallMat, "WallE", new Vector3(14.5f, 2.5f, 4f), new Vector3(1f, 5f, 22f));
+            CreateWall(wallMat, "WallW", new Vector3(-14.5f, 2.5f, 4f), new Vector3(1f, 5f, 22f));
 
             // 플레이어 (FPS)
             var player = new GameObject("Player");
@@ -645,8 +776,10 @@ namespace VirtualMuseum.EditorTools
             var spawner = systems.AddComponent<StudentArtifactSpawner>();
             SetRef(spawner, "pedestalPrefab", pedestalPrefab);
             SetRef(spawner, "excavationDirtMaterialTemplate", excavationMat);
+            SetFloat(spawner, "pedestalTopHeight", 1.11f); // 지층 상판(1.13) 기준, 살짝 반매립되도록
 
             var interaction = systems.AddComponent<StudentInteractionManager>();
+            systems.AddComponent<VirtualMuseum.Vault.VaultUIManager>(); // V키 내 유물함
 
             // 발굴 시스템 (오버레이 - 평소 비활성)
             var excavationSystem = new GameObject("ExcavationSystem");
@@ -670,6 +803,21 @@ namespace VirtualMuseum.EditorTools
             main.startLifetime = 1.2f;
             main.startColor = new Color(1f, 0.85f, 0.4f);
             SetRef(session, "successParticles", particles);
+
+            // 파손 파편 파티클 (갈색 파편이 짧게 튀는 연출)
+            var breakGO = new GameObject("BreakParticles");
+            breakGO.transform.SetParent(excavationSystem.transform, false);
+            var breakPs = breakGO.AddComponent<ParticleSystem>();
+            var breakMain = breakPs.main;
+            breakMain.playOnAwake = false;
+            breakMain.startSpeed = 3.5f;
+            breakMain.startLifetime = 0.7f;
+            breakMain.startSize = 0.06f;
+            breakMain.startColor = new Color(0.6f, 0.42f, 0.3f);
+            var breakEmission = breakPs.emission;
+            breakEmission.rateOverTime = 0f;
+            breakEmission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)40) });
+            SetRef(session, "breakParticles", breakPs);
 
             excavationSystem.SetActive(false);
 
@@ -722,6 +870,15 @@ namespace VirtualMuseum.EditorTools
             SetRef(interaction, "backgroundDimOverlay", dimGroup);
 
             EditorSceneManager.SaveScene(scene, ScenesDir + "/StudentPerspective.unity");
+        }
+
+        private static void CreateWall(Material mat, string name, Vector3 position, Vector3 scale)
+        {
+            var wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            wall.name = name;
+            wall.transform.position = position;
+            wall.transform.localScale = scale;
+            wall.GetComponent<Renderer>().sharedMaterial = mat;
         }
 
         private static void CreateLight()

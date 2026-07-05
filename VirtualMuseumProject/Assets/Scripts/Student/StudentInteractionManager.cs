@@ -53,9 +53,9 @@ namespace VirtualMuseum.Student
                 else if (UnityEngine.Input.GetKeyDown(KeyCode.E))
                     OpenExcavationOverlay();
             }
-            else if (mode == InteractionMode.InfoPanel)
+            else if (mode == InteractionMode.InfoPanel && !Vault.VaultUIManager.IsOpen)
             {
-                // 닫기 경로: Q 재입력 또는 ESC
+                // 닫기 경로: Q 재입력 또는 ESC (유물함이 열려 있을 때는 VaultUIManager가 담당)
                 if (UnityEngine.Input.GetKeyDown(KeyCode.Q) || UnityEngine.Input.GetKeyDown(KeyCode.Escape))
                     CloseInfoPanel();
             }
@@ -118,8 +118,8 @@ namespace VirtualMuseum.Student
                 new GUIStyle(GUI.skin.label) { fontSize = 24, alignment = TextAnchor.MiddleCenter });
 
             // 조작 안내 (좌측 하단)
-            GUI.Label(new Rect(12, Screen.height - 30, 600, 24),
-                "WASD 이동 / Shift 달리기 / 마우스 시야 / F 핸드트래킹 토글" +
+            GUI.Label(new Rect(12, Screen.height - 30, 700, 24),
+                "WASD 이동 / Shift 달리기 / 마우스 시야 / F 핸드트래킹 / V 유물함" +
                 (_nearbyArtifact != null ? $"   |   [{_nearbyArtifact.artifactName}]  Q: 정보  E: 발굴" : ""));
         }
 

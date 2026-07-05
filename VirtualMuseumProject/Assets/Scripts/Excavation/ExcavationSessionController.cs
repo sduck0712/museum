@@ -22,6 +22,7 @@ namespace VirtualMuseum.Excavation
         [SerializeField] private ExcavationBrush brush;
         [SerializeField] private ReassemblyPuzzleManager puzzleManager;
         [SerializeField] private ParticleSystem successParticles;
+        [SerializeField] private ParticleSystem breakParticles; // 파손 시 파편 연출 (스펙 6절)
 
         private Camera _camera;
         private float _defaultFov;
@@ -105,6 +106,13 @@ namespace VirtualMuseum.Excavation
         private void HandleBroken()
         {
             _statusMessage = "유물이 파손되었습니다! 흩어진 조각을 드래그해 실루엣에 맞추세요.";
+
+            if (breakParticles != null)
+            {
+                breakParticles.transform.position = _target.transform.position;
+                breakParticles.Play();
+            }
+
             StartPuzzle();
         }
 

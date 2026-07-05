@@ -21,9 +21,22 @@ namespace VirtualMuseum.HandTracking
 
         private void Awake()
         {
-            _provider = useMockProvider
-                ? (IHandLandmarkProvider)new MockHandLandmarkProvider()
-                : new MediaPipeHandLandmarkProvider();
+            if (useMockProvider)
+            {
+                _provider = new MockHandLandmarkProvider();
+            }
+            else
+            {
+#if MEDIAPIPE
+                // MediaPipe Unity Plugin 설치 + MEDIAPIPE 심볼 정의 시 실연동 어댑터 사용
+                _provider = new MediaPipeTasksHandProvider();
+#else
+                // 플러그인 미설치 상태의 연동 지점 스텁 (웹캠만 열림, 랜드마크 없음)
+                Debug.LogWarning("[HandTrackingManager] MEDIAPIPE 심볼이 정의되지 않아 스텁 프로바이더를 사용합니다. " +
+                                 "Docs/MediaPipe_Integration.md 참고.");
+                _provider = new MediaPipeHandLandmarkProvider();
+#endif
+            }
         }
 
         /// <returns>활성화 성공 여부. 실패(웹캠 미검출 등) 시 false를 반환하고 비활성 상태를 유지한다.</returns>
