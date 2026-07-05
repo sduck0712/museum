@@ -8,8 +8,8 @@ namespace VirtualMuseum.Puzzle
     /// </summary>
     public class ArtifactShard : MonoBehaviour
     {
-        [SerializeField] private float snapPositionTolerance = 0.15f;
-        [SerializeField] private float snapRotationToleranceDegrees = 15f;
+        [SerializeField] private float snapPositionTolerance = 0.12f;
+        [SerializeField] private float snapRotationToleranceDegrees = 25f;
 
         public Vector3 CorrectLocalPosition { get; private set; }
         public Quaternion CorrectLocalRotation { get; private set; }
@@ -19,14 +19,27 @@ namespace VirtualMuseum.Puzzle
         {
             CorrectLocalPosition = correctLocalPosition;
             CorrectLocalRotation = correctLocalRotation;
+            IsSnapped = false;
         }
 
+        public void SetTolerances(float positionTolerance, float rotationToleranceDegrees)
+        {
+            snapPositionTolerance = positionTolerance;
+            snapRotationToleranceDegrees = rotationToleranceDegrees;
+        }
+
+        public void GetTargetWorldPose(Transform puzzleRoot, out Vector3 position, out Quaternion rotation)
+        {
+            position = puzzleRoot.TransformPoint(CorrectLocalPosition);
+            rotation = puzzleRoot.rotation * CorrectLocalRotation;
+        }
+
+        /// <summary>드래그를 놓았을 때 한 번만 호출된다 (매 프레임 자동 스냅 방지).</summary>
         public bool TryEvaluateSnap(Transform puzzleRoot)
         {
             if (IsSnapped) return true;
 
-            Vector3 targetWorldPos = puzzleRoot.TransformPoint(CorrectLocalPosition);
-            Quaternion targetWorldRot = puzzleRoot.rotation * CorrectLocalRotation;
+            GetTargetWorldPose(puzzleRoot, out Vector3 targetWorldPos, out Quaternion targetWorldRot);
 
             float posDelta = Vector3.Distance(transform.position, targetWorldPos);
             float rotDelta = Quaternion.Angle(transform.rotation, targetWorldRot);

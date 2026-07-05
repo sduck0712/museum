@@ -12,16 +12,19 @@ namespace VirtualMuseum.Auth
         public void LoginAsStudent(string studentNameOrId)
         {
             // 학생 입장은 별도 비밀번호 없이 세션만 생성 (데모 단계)
-            string name = string.IsNullOrEmpty(studentNameOrId) ? "Guest" : studentNameOrId;
+            string name = string.IsNullOrWhiteSpace(studentNameOrId) ? "Guest" : studentNameOrId.Trim();
             GameSessionData.Instance.SetStudentSession(name);
         }
 
         public async Task<bool> TryLoginAsAdminAsync(string id, string password)
         {
-            bool isValid = await ServiceLocator.CurrentBackend.ValidateAdminCredentialAsync(id, password);
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrEmpty(password))
+                return false;
+
+            bool isValid = await ServiceLocator.CurrentBackend.ValidateAdminCredentialAsync(id.Trim(), password);
 
             if (isValid)
-                GameSessionData.Instance.SetAdminSession(id);
+                GameSessionData.Instance.SetAdminSession(id.Trim());
 
             return isValid;
         }

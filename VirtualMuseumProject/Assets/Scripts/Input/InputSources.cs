@@ -34,7 +34,10 @@ namespace VirtualMuseum.Input
             _handTrackingManager = handTrackingManager;
         }
 
-        public Vector2 GetPointerViewportPosition() => _handTrackingManager.IndexFingerViewportPosition;
-        public bool IsPrimaryActionHeld() => _handTrackingManager.IsPinching;
+        public Vector2 GetPointerViewportPosition() =>
+            _handTrackingManager != null ? _handTrackingManager.IndexFingerViewportPosition : Vector2.one * 0.5f;
+
+        public bool IsPrimaryActionHeld() =>
+            _handTrackingManager != null && _handTrackingManager.IsPinching;
     }
 }

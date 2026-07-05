@@ -11,7 +11,7 @@
       "recommendedToolType": 1,
       "excavationDifficulty": 2,
       "shardCount": 6,
-      "placementData": { "pedestalID": "PDT-01", "position": {"x":0,"y":0,"z":0}, "rotation": {"x":0,"y":0,"z":0}, "scale": {"x":1,"y":1,"z":1} }
+      "placementData": { "pedestalID": "PDT-01", "position": {"x":-6,"y":0,"z":6}, "rotation": {"x":0,"y":0,"z":0}, "scale": {"x":1,"y":1,"z":1} }
     },
     {
       "artifactID": "LOUVRE-002",
@@ -24,7 +24,7 @@
       "recommendedToolType": 1,
       "excavationDifficulty": 2,
       "shardCount": 8,
-      "placementData": { "pedestalID": "PDT-02", "position": {"x":3,"y":0,"z":0}, "rotation": {"x":0,"y":0,"z":0}, "scale": {"x":1,"y":1,"z":1} }
+      "placementData": { "pedestalID": "PDT-02", "position": {"x":-3,"y":0,"z":7.5}, "rotation": {"x":0,"y":0,"z":0}, "scale": {"x":1,"y":1,"z":1} }
     },
     {
       "artifactID": "LOUVRE-003",
@@ -37,7 +37,7 @@
       "recommendedToolType": 0,
       "excavationDifficulty": 1,
       "shardCount": 4,
-      "placementData": { "pedestalID": "PDT-03", "position": {"x":6,"y":0,"z":0}, "rotation": {"x":0,"y":0,"z":0}, "scale": {"x":1,"y":1,"z":1} }
+      "placementData": { "pedestalID": "PDT-03", "position": {"x":0,"y":0,"z":8}, "rotation": {"x":0,"y":0,"z":0}, "scale": {"x":1,"y":1,"z":1} }
     },
     {
       "artifactID": "LOUVRE-004",
@@ -50,7 +50,7 @@
       "recommendedToolType": 2,
       "excavationDifficulty": 2,
       "shardCount": 5,
-      "placementData": { "pedestalID": "PDT-04", "position": {"x":9,"y":0,"z":0}, "rotation": {"x":0,"y":0,"z":0}, "scale": {"x":1,"y":1,"z":1} }
+      "placementData": { "pedestalID": "PDT-04", "position": {"x":3,"y":0,"z":7.5}, "rotation": {"x":0,"y":0,"z":0}, "scale": {"x":1,"y":1,"z":1} }
     },
     {
       "artifactID": "LOUVRE-005",
@@ -63,7 +63,7 @@
       "recommendedToolType": 3,
       "excavationDifficulty": 1,
       "shardCount": 4,
-      "placementData": { "pedestalID": "PDT-05", "position": {"x":12,"y":0,"z":0}, "rotation": {"x":0,"y":0,"z":0}, "scale": {"x":1,"y":1,"z":1} }
+      "placementData": { "pedestalID": "PDT-05", "position": {"x":6,"y":0,"z":6}, "rotation": {"x":0,"y":0,"z":0}, "scale": {"x":1,"y":1,"z":1} }
     }
   ]
 }

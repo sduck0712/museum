@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using VirtualMuseum.Core;
 using VirtualMuseum.Data;
@@ -12,26 +13,35 @@ namespace VirtualMuseum.AdminConsole
     {
         [SerializeField] private string pedestalID;
 
+        public string PedestalID => pedestalID;
+
         public async void AssignArtifact(string artifactID, Quaternion rotation)
         {
-            var artifacts = await ServiceLocator.CurrentBackend.FetchMuseumLayoutAsync();
-            var artifact = artifacts.Find(a => a.artifactID == artifactID);
-            if (artifact == null)
+            try
             {
-                Debug.LogWarning($"[PedestalDropSlot] artifactID를 찾을 수 없음: {artifactID}");
-                return;
+                var artifacts = await ServiceLocator.CurrentBackend.FetchMuseumLayoutAsync();
+                var artifact = artifacts.Find(a => a.artifactID == artifactID);
+                if (artifact == null)
+                {
+                    Debug.LogWarning($"[PedestalDropSlot] artifactID를 찾을 수 없음: {artifactID}");
+                    return;
+                }
+
+                artifact.placementData = new PlacementData
+                {
+                    pedestalID = pedestalID,
+                    position = transform.position,
+                    rotation = rotation.eulerAngles,
+                    scale = Vector3.one
+                };
+
+                await ServiceLocator.CurrentBackend.SaveArtifactDataAsync(artifact);
+                Debug.Log($"[PedestalDropSlot] {artifactID} → {pedestalID}에 배치 저장 완료");
             }
-
-            artifact.placementData = new PlacementData
+            catch (Exception e)
             {
-                pedestalID = pedestalID,
-                position = transform.position,
-                rotation = rotation.eulerAngles,
-                scale = Vector3.one
-            };
-
-            await ServiceLocator.CurrentBackend.SaveArtifactDataAsync(artifact);
-            Debug.Log($"[PedestalDropSlot] {artifactID} → {pedestalID}에 배치 저장 완료");
+                Debug.LogError($"[PedestalDropSlot] 배치 저장 실패: {e}");
+            }
         }
     }
 }

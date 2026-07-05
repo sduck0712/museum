@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using VirtualMuseum.Data;
@@ -13,6 +14,11 @@ namespace VirtualMuseum.Backend
     /// <summary>
     /// 1단계 로컬 목업 백엔드. Application.persistentDataPath 아래에
     /// museum_data.json / admin_accounts.json / StlFiles 폴더를 사용한다.
+    ///
+    /// 스레딩 규칙: 파일 I/O(느릴 수 있음)만 Task.Run으로 백그라운드에서 수행하고,
+    /// JsonUtility 직렬화/역직렬화는 await 이후(Unity SynchronizationContext에 의해
+    /// 메인 스레드로 복귀한 시점)에 수행한다. 읽기-수정-쓰기 경합은 세마포어로 직렬화한다.
+    ///
     /// 클라우드 전환 시 이 클래스 대신 새 IBackendService 구현체를 ServiceLocator에
     /// 등록하기만 하면 나머지 코드는 수정할 필요가 없다.
     /// </summary>
@@ -21,9 +27,11 @@ namespace VirtualMuseum.Backend
         private readonly string _dataFilePath;
         private readonly string _adminFilePath;
         private readonly string _stlFolderPath;
+        private readonly SemaphoreSlim _ioLock = new SemaphoreSlim(1, 1);
 
         public LocalJsonBackendService()
         {
+            // Application.persistentDataPath는 메인 스레드에서만 접근 가능하므로 생성자에서 캐싱
             _dataFilePath = Path.Combine(Application.persistentDataPath, "museum_data.json");
             _adminFilePath = Path.Combine(Application.persistentDataPath, "admin_accounts.json");
             _stlFolderPath = Path.Combine(Application.persistentDataPath, "StlFiles");
@@ -35,33 +43,39 @@ namespace VirtualMuseum.Backend
             EnsureSeedDataCopiedFromStreamingAssets();
         }
 
-        public Task<string> UploadArtifactFileAsync(string localFilePath, string artifactID)
+        public async Task<string> UploadArtifactFileAsync(string localFilePath, string artifactID)
         {
-            return Task.Run(() =>
-            {
-                if (!File.Exists(localFilePath))
-                    throw new FileNotFoundException($"STL 파일을 찾을 수 없습니다: {localFilePath}");
+            if (string.IsNullOrWhiteSpace(localFilePath) || !File.Exists(localFilePath))
+                throw new FileNotFoundException($"STL 파일을 찾을 수 없습니다: {localFilePath}");
 
-                string extension = Path.GetExtension(localFilePath);
-                string destPath = Path.Combine(_stlFolderPath, $"{artifactID}{extension}");
-                File.Copy(localFilePath, destPath, overwrite: true);
+            string extension = Path.GetExtension(localFilePath);
+            string destPath = Path.Combine(_stlFolderPath, $"{artifactID}{extension}");
 
-                // 클라우드 전환 시 여기서 실제 원격 URL을 반환하면 됨. 지금은 로컬 경로 반환.
-                return destPath;
-            });
+            await Task.Run(() => File.Copy(localFilePath, destPath, overwrite: true));
+
+            // 클라우드 전환 시 여기서 실제 원격 URL을 반환하면 됨. 지금은 로컬 경로 반환.
+            return destPath;
         }
 
         public async Task SaveArtifactDataAsync(ArtifactData data)
         {
-            var wrapper = await LoadWrapperAsync();
-            int existingIndex = wrapper.artifacts.FindIndex(a => a.artifactID == data.artifactID);
+            await _ioLock.WaitAsync();
+            try
+            {
+                var wrapper = await LoadWrapperAsync();
+                int existingIndex = wrapper.artifacts.FindIndex(a => a.artifactID == data.artifactID);
 
-            if (existingIndex >= 0)
-                wrapper.artifacts[existingIndex] = data;
-            else
-                wrapper.artifacts.Add(data);
+                if (existingIndex >= 0)
+                    wrapper.artifacts[existingIndex] = data;
+                else
+                    wrapper.artifacts.Add(data);
 
-            await SaveWrapperAsync(wrapper);
+                await SaveWrapperAsync(wrapper);
+            }
+            finally
+            {
+                _ioLock.Release();
+            }
         }
 
         public async Task<List<ArtifactData>> FetchMuseumLayoutAsync()
@@ -72,49 +86,50 @@ namespace VirtualMuseum.Backend
 
         public async Task DeleteArtifactAsync(string artifactID)
         {
-            var wrapper = await LoadWrapperAsync();
-            wrapper.artifacts.RemoveAll(a => a.artifactID == artifactID);
-            await SaveWrapperAsync(wrapper);
+            await _ioLock.WaitAsync();
+            try
+            {
+                var wrapper = await LoadWrapperAsync();
+                wrapper.artifacts.RemoveAll(a => a.artifactID == artifactID);
+                await SaveWrapperAsync(wrapper);
+            }
+            finally
+            {
+                _ioLock.Release();
+            }
 
             string possibleStl = Directory.GetFiles(_stlFolderPath, $"{artifactID}.*").FirstOrDefault();
             if (possibleStl != null)
-                File.Delete(possibleStl);
+                await Task.Run(() => File.Delete(possibleStl));
         }
 
-        public Task<bool> ValidateAdminCredentialAsync(string id, string password)
+        public async Task<bool> ValidateAdminCredentialAsync(string id, string password)
         {
-            return Task.Run(() =>
-            {
-                if (!File.Exists(_adminFilePath)) return false;
+            if (!File.Exists(_adminFilePath)) return false;
 
-                string json = File.ReadAllText(_adminFilePath);
-                var accounts = JsonUtility.FromJson<AdminAccountListWrapper>(json);
-                string hashed = HashPassword(password);
+            string json = await Task.Run(() => File.ReadAllText(_adminFilePath));
+            string hashed = await Task.Run(() => HashPassword(password));
 
-                return accounts.accounts.Any(a => a.id == id && a.passwordHash == hashed);
-            });
+            var accounts = JsonUtility.FromJson<AdminAccountListWrapper>(json);
+            if (accounts?.accounts == null) return false;
+
+            return accounts.accounts.Any(a => a.id == id && a.passwordHash == hashed);
         }
 
-        private Task<ArtifactDataListWrapper> LoadWrapperAsync()
+        private async Task<ArtifactDataListWrapper> LoadWrapperAsync()
         {
-            return Task.Run(() =>
-            {
-                if (!File.Exists(_dataFilePath))
-                    return new ArtifactDataListWrapper();
+            if (!File.Exists(_dataFilePath))
+                return new ArtifactDataListWrapper();
 
-                string json = File.ReadAllText(_dataFilePath);
-                var wrapper = JsonUtility.FromJson<ArtifactDataListWrapper>(json);
-                return wrapper ?? new ArtifactDataListWrapper();
-            });
+            string json = await Task.Run(() => File.ReadAllText(_dataFilePath));
+            var wrapper = JsonUtility.FromJson<ArtifactDataListWrapper>(json);
+            return wrapper ?? new ArtifactDataListWrapper();
         }
 
-        private Task SaveWrapperAsync(ArtifactDataListWrapper wrapper)
+        private async Task SaveWrapperAsync(ArtifactDataListWrapper wrapper)
         {
-            return Task.Run(() =>
-            {
-                string json = JsonUtility.ToJson(wrapper, true);
-                File.WriteAllText(_dataFilePath, json);
-            });
+            string json = JsonUtility.ToJson(wrapper, true);
+            await Task.Run(() => File.WriteAllText(_dataFilePath, json));
         }
 
         private void EnsureDefaultAdminAccount()
@@ -147,7 +162,7 @@ namespace VirtualMuseum.Backend
         private static string HashPassword(string password)
         {
             using var sha = SHA256.Create();
-            byte[] bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(password));
+            byte[] bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(password ?? string.Empty));
             var sb = new StringBuilder();
             foreach (byte b in bytes) sb.Append(b.ToString("x2"));
             return sb.ToString();

@@ -14,6 +14,7 @@ Shader "Hidden/VirtualMuseum/BrushBlit"
     SubShader
     {
         Tags { "RenderType"="Opaque" }
+        ZTest Always Cull Off ZWrite Off
         Pass
         {
             CGPROGRAM
