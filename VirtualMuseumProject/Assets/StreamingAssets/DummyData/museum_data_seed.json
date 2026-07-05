@@ -1,0 +1,69 @@
+{
+  "artifacts": [
+    {
+      "artifactID": "LOUVRE-001",
+      "artifactName": "밀로의 비너스 (Venus de Milo)",
+      "historicalDescription": "기원전 2세기경 그리스 헬레니즘 시대의 대리석 조각상으로, 1820년 밀로스 섬의 한 농경지에서 매장된 상태로 발견되었다. 현재 루브르 쉴리관에 전시되어 있다.",
+      "videoURL": "",
+      "rarityTier": 3,
+      "stlFileURL": "",
+      "maxDurability": 30,
+      "recommendedToolType": 1,
+      "excavationDifficulty": 2,
+      "shardCount": 6,
+      "placementData": { "pedestalID": "PDT-01", "position": {"x":0,"y":0,"z":0}, "rotation": {"x":0,"y":0,"z":0}, "scale": {"x":1,"y":1,"z":1} }
+    },
+    {
+      "artifactID": "LOUVRE-002",
+      "artifactName": "사모트라케의 니케 (Winged Victory of Samothrace)",
+      "historicalDescription": "기원전 2세기경 제작된 헬레니즘 조각상으로, 1863년 사모트라케 섬 유적지에서 여러 조각으로 파손된 채 발굴되었다. 루브르 드농관 계단에 전시되어 있다.",
+      "videoURL": "",
+      "rarityTier": 3,
+      "stlFileURL": "",
+      "maxDurability": 25,
+      "recommendedToolType": 1,
+      "excavationDifficulty": 2,
+      "shardCount": 8,
+      "placementData": { "pedestalID": "PDT-02", "position": {"x":3,"y":0,"z":0}, "rotation": {"x":0,"y":0,"z":0}, "scale": {"x":1,"y":1,"z":1} }
+    },
+    {
+      "artifactID": "LOUVRE-003",
+      "artifactName": "웅크린 서기관상 (Seated Scribe)",
+      "historicalDescription": "기원전 2600~2350년경 고대 이집트 고왕국 시대의 채색 석회암 좌상으로, 사카라 유적지에서 발굴되었다. 루브르 이집트 유물관 소장품이다.",
+      "videoURL": "",
+      "rarityTier": 2,
+      "stlFileURL": "",
+      "maxDurability": 45,
+      "recommendedToolType": 0,
+      "excavationDifficulty": 1,
+      "shardCount": 4,
+      "placementData": { "pedestalID": "PDT-03", "position": {"x":6,"y":0,"z":0}, "rotation": {"x":0,"y":0,"z":0}, "scale": {"x":1,"y":1,"z":1} }
+    },
+    {
+      "artifactID": "LOUVRE-004",
+      "artifactName": "함무라비 법전 비석 (Code of Hammurabi)",
+      "historicalDescription": "기원전 1754년경 제작된 현무암 비석으로, 프랑스 고고학 탐사대가 현재의 이란 지역인 수사 유적에서 발굴했다. 루브르 근동 유물관에 전시되어 있다.",
+      "videoURL": "",
+      "rarityTier": 2,
+      "stlFileURL": "",
+      "maxDurability": 65,
+      "recommendedToolType": 2,
+      "excavationDifficulty": 2,
+      "shardCount": 5,
+      "placementData": { "pedestalID": "PDT-04", "position": {"x":9,"y":0,"z":0}, "rotation": {"x":0,"y":0,"z":0}, "scale": {"x":1,"y":1,"z":1} }
+    },
+    {
+      "artifactID": "LOUVRE-005",
+      "artifactName": "라마수 (날개 달린 인두수신상)",
+      "historicalDescription": "기원전 8세기경 아시리아 사르곤 2세 궁전을 지키던 수호상으로, 현재의 이라크 코르사바드 유적에서 발굴되었다. 루브르 근동 유물관에 전시되어 있다.",
+      "videoURL": "",
+      "rarityTier": 1,
+      "stlFileURL": "",
+      "maxDurability": 70,
+      "recommendedToolType": 3,
+      "excavationDifficulty": 1,
+      "shardCount": 4,
+      "placementData": { "pedestalID": "PDT-05", "position": {"x":12,"y":0,"z":0}, "rotation": {"x":0,"y":0,"z":0}, "scale": {"x":1,"y":1,"z":1} }
+    }
+  ]
+}
